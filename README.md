@@ -11,6 +11,7 @@ CCCvelo employs several visualization strategies to facilitate the analysis of C
 * `0_preprocess_inputData.R` contains the scripts to prepare the condinate ligands, receptors, and feature genes for constructing multilayer signaling network <br>
 * `1_run_MLnet_demo.py` contains the scripts to construct mulitlayer signling network and calculate the LR signaling strength <br>
 * `2_run_CCCvelo_demo.py` contains the scripts to infer the CCC-driven RNA velocity <br>
+The package CCCvelo can be directly downloaded for usage.
 
 # Environment
 h5py                3.11.0 <br>
