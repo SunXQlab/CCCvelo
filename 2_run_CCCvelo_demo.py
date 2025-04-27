@@ -60,25 +60,24 @@ def main(seed, inputDir):
 
 if __name__ == "__main__":
     process = psutil.Process(os.getpid())
-    before_memory = process.memory_info().rss / 1024 ** 2  # 转换为 MB
+    before_memory = process.memory_info().rss / 1024 ** 2  
 
     seed = 3 # Replace with your seed value
-    slide_num=25 
-    torch.manual_seed(seed)  # 设置PyTorch的随机种子
+    torch.manual_seed(seed)  
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
-    random.seed(seed)  # 设置Python内置随机数生成器的种子
-    np.random.seed(seed)  # 设置Numpy的随机种子
+    random.seed(seed)  
+    np.random.seed(seed)  
     start_time = time.time()
 
     base_path = "E:/CCCvelo/apply_in_cortex/"
-    outputDir = os.path.join(base_path, f"Output/bin60_input_with_para{slide_num}/RtoPy_test/")
+    outputDir = os.path.join(base_path, f"Output/RtoPy_test/")
 
-    main(seed, inputDir=outputDir)  # slide_num: 表示不同MLnet参数下的结果
+    main(seed, inputDir=outputDir)  
 
-    after_memory = process.memory_info().rss / 1024 ** 2  # 转换为 MB
-    print(f"内存使用增加了: {after_memory - before_memory} MB")
+    after_memory = process.memory_info().rss / 1024 ** 2 
+    print(f"Using memory is: {after_memory - before_memory} MB")
 
     end_time = time.time()
     run_time = (end_time - start_time) / 60
