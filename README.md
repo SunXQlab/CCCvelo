@@ -13,7 +13,6 @@ CCCvelo employs several visualization strategies to facilitate the analysis of C
 * `2_run_CCCvelo_demo.py` contains the scripts to infer the CCC-driven RNA velocity <br>
 
 # Environment
-anndata             0.9.2  <br>        
 h5py                3.11.0 <br>
 matplotlib          3.7.5 <br>
 mpmath              1.3.0 <br>
@@ -31,6 +30,7 @@ seaborn             0.13.2 <br>
 setuptools          68.2.0 <br>
 threadpoolctl       3.5.0 <br>
 torch               2.0.1 <br>
+anndata             0.9.2  <br>     
 # Usage
 
 
