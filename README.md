@@ -8,4 +8,9 @@ CCCvelo is a computational framework designed to reconstruct CCC-driven CST dyna
 
 CCCvelo employs several visualization strategies to facilitate the analysis of CCC-driven CST dynamics. These visualizations mainly include velocity streamlines illustrating CST trajectories, heatmap visualizations of gene expression and TF activity along pseudotime, and multilayer network plots of CCC displaying the signaling paths from upstream LR pairs to TFs and then to the downstream TGs.
 
+* `0_preprocess_inputData.R` contains the scripts to prepare the condinate ligands, receptors, and feature genes for constructing multilayer signaling network <br>
+* `1_run_MLnet_demo.py` contains the scripts to construct mulitlayer signling network and calculate the LR signaling strength <br>
+* `2_run_CCCvelo_demo.py` contains the scripts to infer the CCC-driven RNA velocity <br>
+
+
 
