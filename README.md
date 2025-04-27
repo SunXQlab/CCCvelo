@@ -1,6 +1,6 @@
 # CCCvelo: Decoding dynamic cell-cell communication-driven cell state transitions in spatial transcriptomics
 CCCvelo is a computational framework designed to reconstruct CCC-driven CST dynamics by jointly optimizing a dynamic CCC signaling network and a latent CST clock.
 <p align="center">
-  <img src="https://github.com/SunXQlab/CCCvelo/fig1.framework.png">
+  <img src="https://github.com/SunXQlab/CCCvelo/blob/main/fig1.framework.png">
 </p>
 
