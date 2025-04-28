@@ -37,7 +37,7 @@ The package CCCvelo can be directly downloaded for usage.
 To learn how to run CCCvelo, Please check the `0_preprocess_inputData.R`, `1_run_MLnet_demo.py`, and  `2_run_CCCvelo_demo.py` files. These files shows the application of CCCvelo on the mouse cortex dataset, which can be download from (https://www.dropbox.com/s/c5tu4drxda01m0u/mousebrain_bin60.h5ad?dl=0). 
 
 * `0_preprocess_inputData.R` contains the scripts to prepare the condinate ligands, receptors, and feature genes for constructing multilayer signaling network <br>
-* `1_run_MLnet_demo.py` contains the scripts to construct mulitlayer signling network and calculate the LR signaling strength <br>
+* `1_run_MLnet_demo.py` contains the scripts to construct mulitlayer signaling network and calculate the LR signaling strength <br>
 * `2_run_CCCvelo_demo.py` contains the scripts to infer the CCC-driven RNA velocity <br>
 
 
