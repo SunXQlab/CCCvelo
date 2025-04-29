@@ -57,7 +57,7 @@ Edit run_CCCvelo.py if needed to set:
 
 The run
 
-python run_CCCvelo.py
+    python run_CCCvelo.py
 
 The output files (trained model, velocity vectors, processed AnnData) will be saved under `Output/your_project_name/`.
 
