@@ -48,8 +48,12 @@ Ligs_expr_list <- LRTG_list[["Ligs_expr_list"]]
 Recs_expr_list <- LRTG_list[["Recs_expr_list"]]
 
 ## save results
+project_name = your_project_name
+output_fpath <- paste0(getwd(), '/Input/your_project_name')
 
-output_fpath <- paste0(getwd(), '/input_test/')
+if(!dir.exists(output_fpath)){
+    dir.create(output_fpath)
+}
 
 write_json(TGs_list, path=paste0(output_fpath,"TGs_list.json"), pretty = TRUE, auto_unbox = TRUE)
 write_json(Ligs_expr_list, path=paste0(output_fpath,"Ligs_list.json"), pretty = TRUE, auto_unbox = TRUE)
