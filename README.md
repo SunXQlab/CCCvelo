@@ -37,9 +37,16 @@ anndata             0.9.2  <br>
 
 # Data preparing
 
-Before running CCCvelo, you need using '1_select_LRTG.R' function to select candidate ligands, receptors, and feature genes from the expression data, and then save the result into the input files under 'Input/your_project_name/'. The file includes:
+Before running CCCvelo, you need using '1_select_LRTG.R' function to select candidate ligands, receptors, and feature genes from the expression data, and then save the result into the input files under the path 'Input/your_project_name/'. The input files include:
 
-Input/ ├── raw_expression_mtx.csv # Raw expression matrix (cells × genes) ├── imputation_expression_mtx.csv # Imputed expression matrix ├── cell_meta.csv # Cell meta information (Cluster annotations) ├── cell_location.csv # Cell spatial coordinates ├── Databases.json # Ligand-Receptor-TF database ├── Ligs_list.json # Candidate Ligands ├── Recs_list.json # Candidate Receptors ├── TGs_list.json # Candidate Target Genes
+Input/ ├── raw_expression_mtx.csv # Raw expression matrix (cells × genes) 
+├── imputation_expression_mtx.csv # Imputed expression matrix 
+├── cell_meta.csv # Cell meta information (Cluster annotations) 
+├── cell_location.csv # Cell spatial coordinates 
+├── Databases.json # Ligand-Receptor-TF database 
+├── Ligs_list.json # Candidate Ligands 
+├── Recs_list.json # Candidate Receptors 
+├── TGs_list.json # Candidate Target Genes
 
 
 To learn how to run CCCvelo, Please check the `0_preprocess_inputData.R`, `1_run_MLnet_demo.py`, and  `2_run_CCCvelo_demo.py` files. These files shows the application of CCCvelo on the mouse cortex dataset, which can be download from (https://www.dropbox.com/s/c5tu4drxda01m0u/mousebrain_bin60.h5ad?dl=0). 
