@@ -10,9 +10,7 @@ rm(list = ls())
 gc()
 
 setwd('/home/yll/velocity_methods/01_analysis/apply_in_prostate/area_4000x6000_5000x7000_input_v2/')
-
 source('/home/yll/velocity_methods/01_analysis/apply_in_stereo_cortex/R/preprocess_code.R')
-source('/home/yll/velocity_methods/01_analysis/apply_in_stereo_cortex/R/create_multilayer_network.R')
 
 # load data
 data_path <- '/home/yll/velocity_methods/01_analysis/apply_in_prostate/data/area_4000x6000_5000x7000/'
