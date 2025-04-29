@@ -181,7 +181,7 @@ def main(
     adata = root_cell(adata, select_root='UMAP')
     print('Root cell cluster is:', adata.obs['Cluster'][adata.uns['iroot']])
 
-    #trainging CCCvelo model
+    # Trainging CCCvelo model
     print("Training CCCvelo model...")
 
     n_cells = adata.n_obs
@@ -191,23 +191,27 @@ def main(
         print("Training with standard SpatialVelocity (full batch)...")
         
         from models.train_CCCvelo import SpatialVelocity
-        from models.plot_CCCvelo import plotLossAdam
 
         data = PrepareData(adata, hidden_dims=hidden_dims)
         model = SpatialVelocity(*data, lr=learning_rate, Lambda=lambda_reg)
-        iteration_adam, loss_adam = model.train(200)
-        plotLossAdam(loss_adam, results_path)
+        iteration_adam, loss_adam = model.train(n_epochs)
+
+        plt_path = os.path.join(results_path, "figure/")
+        create_directory(plt_path)
+        plot_gene_dynamic(adata_velo, model, plt_path)
     
     else:
         print("Training with batch SpatialVelocity (mini-batch mode)...")
 
         from models.train_CCCvelo_batchs import SpatialVelocity
-        from models.plot_CCCvelo_batch import plotLossAdam
 
         data = PrepareData(adata, hidden_dims=hidden_dims)
         model = SpatialVelocity(*data, lr=learning_rate, Lambda=lambda_reg, batch_size=batch_size)
         iteration_adam, loss_adam = model.train(n_epochs)
-        plotLossAdam(loss_adam, results_path)
+
+        plt_path = os.path.join(results_path, "figure/")
+        create_directory(plt_path)
+        plot_gene_dynamic(adata_velo, model, plt_path)
 
     adata.write_h5ad(os.path.join(output_dir, 'adata_pyinput.h5ad'))
 
