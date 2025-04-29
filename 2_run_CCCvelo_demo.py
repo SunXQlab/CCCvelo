@@ -14,8 +14,6 @@ from models.runMLnet import *
 from models.preprocess_CCCvelo import *
 from models.calculateLRscore import *
 
-# ========== 工具函数 ==========
-
 def create_directory(path):
     if not os.path.exists(path):
         os.makedirs(path)
@@ -41,8 +39,6 @@ def ReadData(count_file, imput_file, meta_file, loca_file):
     adata.layers['Imputate'] = df_imput.values
     return adata
 
-# ========== 主程序入口 ==========
-
 def main(
     seed,
     base_path="E:/CCCvelo/apply_in_prostate/",
@@ -57,12 +53,12 @@ def main(
     # if rec_clusters is None:
     #     rec_clusters = ['E.state tumor', 'ICS.state tumor', 'M.state tumor']
 
-    # 设置路径
+    # set input and output path
     input_dir = os.path.join(base_path, "Input", project_name)
     output_dir = os.path.join(base_path, "Output", project_name)
     create_directory(output_dir)
 
-    # 加载数据
+    # load dataset
     print("Loading data...")
     data_files = {
         'count_file': 'raw_expression_mtx.csv',
@@ -73,21 +69,20 @@ def main(
     paths = {key: os.path.join(input_dir, fname) for key, fname in data_files.items()}
     adata = ReadData(**paths)
 
-    # 加载外部资源
+    # load prior database and candidate ligands, receptors, and feature genes
     print("Loading database...")
     Databases = load_json(os.path.join(input_dir, "Databases.json"))
     TGs_list = load_json(os.path.join(input_dir, "TGs_list.json"))
     Ligs_list = load_json(os.path.join(input_dir, "Ligs_list.json"))
     Recs_list = load_json(os.path.join(input_dir, "Recs_list.json"))
 
-    # 预处理表达矩阵
+    # construct multilayer signaing network 
     ExprMat = pd.DataFrame(np.log1p(adata.X), index=adata.obs_names, columns=adata.var_names)
     sub_anno = pd.DataFrame({
         "Barcode": adata.obs_names,
         "Cluster": adata.obs["Cluster"].values
     })
 
-    # 运行 multilayer network 构建
     print("Building multilayer network...")
     resMLnet = runMLnet(
         ExprMat=ExprMat,
@@ -112,7 +107,7 @@ def main(
     print("Multilayer network nodes summary:")
     print(summarize_multinet(ex_mulnetlist))
 
-    # 计算 LR-TF 分数
+    # calclulate LR signaling strength
     ExprMat_Impute = pd.DataFrame(
         adata.layers['Imputate'].T,
         index=adata.var_names,
@@ -139,7 +134,7 @@ def main(
         wd_model=wd_model
     )
 
-    # 处理 TF-LR 打分
+    # save LR signaling strength for each cells
     files_tf = [f for f in os.listdir(wd_model) if "LRTF" in f]
     TFLR_all_score = get_TFLR_allactivity(
         mulNetList=ex_mulnetlist,
@@ -157,7 +152,7 @@ def main(
     with open(os.path.join(output_dir, 'TFLR_all_score.pkl'), 'wb') as f:
         pickle.dump(TFLR_all_score, f)
 
-    # 筛选 receiver 细胞
+    # select receiver cells
     print("Selecting receiver cells...")
     celltype_ls = adata.obs['Cluster'].to_list()
     ct_index_ls = []
@@ -169,7 +164,7 @@ def main(
     results_path = os.path.join(output_dir, "Output")
     create_directory(results_path)
 
-    # 准备 CCCvelo 输入
+    # prepare the input of CCCvelo
     link_files = {
         'LR_link_file': 'LR_links.csv',
         'TFTG_link_file': 'TFTG_links.csv',
@@ -186,9 +181,8 @@ def main(
     adata = root_cell(adata, select_root='UMAP')
     print('Root cell cluster is:', adata.obs['Cluster'][adata.uns['iroot']])
 
-    # 建模
-    print("Training spatial velocity model...")
-    
+    #trainging CCCvelo model
+    print("Training CCCvelo model...")
 
     n_cells = adata.n_obs
     print(f"Number of receiver cells: {n_cells}")
@@ -224,20 +218,20 @@ def main(
 
     print("Pipeline finished successfully!")
 
-# 运行
+# Running
 if __name__ == "__main__":
 
     seed = 1 # Replace with your seed value
 
-    torch.manual_seed(seed)  # 设置PyTorch的随机种子
+    torch.manual_seed(seed)  
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
-    random.seed(seed)  # 设置Python内置随机数生成器的种子
-    np.random.seed(seed)  # 设置Numpy的随机种子
+    random.seed(seed) 
+    np.random.seed(seed)  
     start_time = time.time()
     process = psutil.Process(os.getpid())
-    before_memory = process.memory_info().rss / 1024 ** 2  # 转换为 MB
+    before_memory = process.memory_info().rss / 1024 ** 2  
 
     main(
         seed,
@@ -250,8 +244,8 @@ if __name__ == "__main__":
         lambda_reg=0.01,
         n_epochs=5)
     
-    after_memory = process.memory_info().rss / 1024 ** 2  # 转换为 MB
-    print(f"内存使用增加了: {after_memory - before_memory} MB")
+    after_memory = process.memory_info().rss / 1024 ** 2  
+    print(f"Memory usage is: {after_memory - before_memory} MB")
     end_time = time.time()
     run_time = (end_time - start_time) / 60
     print(f"Running time is: {run_time} mins")
