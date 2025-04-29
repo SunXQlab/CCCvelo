@@ -58,7 +58,7 @@ def main(
     output_dir = os.path.join(base_path, "Output", project_name)
     create_directory(output_dir)
 
-    # load dataset
+    # step1: load raw dataset
     print("Loading data...")
     data_files = {
         'count_file': 'raw_expression_mtx.csv',
@@ -69,14 +69,14 @@ def main(
     paths = {key: os.path.join(input_dir, fname) for key, fname in data_files.items()}
     adata = ReadData(**paths)
 
-    # load prior database and candidate ligands, receptors, and feature genes
+    # step2: load prior database and candidate ligands, receptors, and feature genes
     print("Loading database...")
     Databases = load_json(os.path.join(input_dir, "Databases.json"))
     TGs_list = load_json(os.path.join(input_dir, "TGs_list.json"))
     Ligs_list = load_json(os.path.join(input_dir, "Ligs_list.json"))
     Recs_list = load_json(os.path.join(input_dir, "Recs_list.json"))
 
-    # construct multilayer signaing network 
+    # step3: construct multilayer signaing network 
     ExprMat = pd.DataFrame(np.log1p(adata.X), index=adata.obs_names, columns=adata.var_names)
     sub_anno = pd.DataFrame({
         "Barcode": adata.obs_names,
@@ -107,7 +107,7 @@ def main(
     print("Multilayer network nodes summary:")
     print(summarize_multinet(ex_mulnetlist))
 
-    # calclulate LR signaling strength
+    # step4: calclulate LR signaling strength
     ExprMat_Impute = pd.DataFrame(
         adata.layers['Imputate'].T,
         index=adata.var_names,
@@ -152,7 +152,7 @@ def main(
     with open(os.path.join(output_dir, 'TFLR_all_score.pkl'), 'wb') as f:
         pickle.dump(TFLR_all_score, f)
 
-    # select receiver cells
+    # step5: select receiver cells
     print("Selecting receiver cells...")
     celltype_ls = adata.obs['Cluster'].to_list()
     ct_index_ls = []
@@ -164,7 +164,7 @@ def main(
     results_path = os.path.join(output_dir, "Output")
     create_directory(results_path)
 
-    # prepare the input of CCCvelo
+    # step6: prepare the input of CCCvelo
     link_files = {
         'LR_link_file': 'LR_links.csv',
         'TFTG_link_file': 'TFTG_links.csv',
@@ -181,7 +181,7 @@ def main(
     adata = root_cell(adata, select_root='UMAP')
     print('Root cell cluster is:', adata.obs['Cluster'][adata.uns['iroot']])
 
-    # Trainging CCCvelo model
+    # step7: trainging CCCvelo model
     print("Training CCCvelo model...")
 
     n_cells = adata.n_obs
