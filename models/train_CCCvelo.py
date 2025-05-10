@@ -176,16 +176,20 @@ class SpatialVelocity():
         self.K1 = torch.empty((self.N_TFs, self.N_LRs), dtype=torch.float32).uniform_(0, 1).float().requires_grad_(True).to(device)
         self.V2 = torch.empty((self.N_TGs, self.N_TFs), dtype=torch.float32).uniform_(0, 1).float().requires_grad_(True).to(device)
         self.K2 = torch.empty((self.N_TGs, self.N_TFs), dtype=torch.float32).uniform_(0, 1).float().requires_grad_(True).to(device)
+        self.gamma = torch.empty((self.N_TGs), dtype=torch.float32).uniform_(0, 2).float().requires_grad_(True).to(device)
+        self.beta = torch.empty((self.N_TFs), dtype=torch.float32).uniform_(0, 2).float().requires_grad_(True).to(device)
 
         # self.V1 = torch.empty((self.N_TFs, self.N_LRs), dtype=torch.float32).uniform_(-1, 1).float().requires_grad_(True).to(device)
         # self.K1 = torch.empty((self.N_TFs, self.N_LRs), dtype=torch.float32).uniform_(-1, 1).float().requires_grad_(True).to(device)
         # self.V2 = torch.empty((self.N_TGs, self.N_TFs), dtype=torch.float32).uniform_(-1, 1).float().requires_grad_(True).to(device)
         # self.K2 = torch.empty((self.N_TGs, self.N_TFs), dtype=torch.float32).uniform_(-1, 1).float().requires_grad_(True).to(device)
 
-        self.V1 = torch.nn.Parameter(self.V1)  # 反向传播需要更新的参数
-        self.K1 = torch.nn.Parameter(self.K1)  # 反向传播需要更新的参数
-        self.V2 = torch.nn.Parameter(self.V2)  # 反向传播需要更新的参数
-        self.K2 = torch.nn.Parameter(self.K2)  # 反向传播需要更新的参数
+        self.V1 = torch.nn.Parameter(self.V1)
+        self.K1 = torch.nn.Parameter(self.K1)
+        self.V2 = torch.nn.Parameter(self.V2) 
+        self.K2 = torch.nn.Parameter(self.K2) 
+        self.gamma = torch.nn.Parameter(self.gamma)
+        self.beta = torch.nn.Parameter(self.beta)
 
         # deep neural networks
         self.dnn = DNN(layers).to(device)
