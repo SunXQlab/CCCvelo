@@ -255,6 +255,7 @@ class SpatialVelocity():
     def hill_fun(self, y0, cell_i, t_i):  # trapezoidal rule approximation
         V1 = self.V1
         K1 = self.K1
+        beta = self.beta
         TFLR_allscore = self.TFLR_allscore
         TFs_expr = self.TFs_expr
         x_i = TFLR_allscore[int(cell_i), :, :]
@@ -263,8 +264,8 @@ class SpatialVelocity():
         V1_ = torch.where(x_i > 0, V1, zero_y)  # torch.Size([88, 63])
         K1_ = torch.where(x_i > 0, K1, zero_y)  # torch.Size([88, 63])
         tmp1 = torch.sum((V1_ * x_i) / ((K1_ + x_i) + (1e-12)), dim=1) * Y_i
-        tmp2 = tmp1 * torch.exp(t_i)
-        y_i = (((y0 + tmp2)*t_i)/2 + y0) * torch.exp(-t_i)
+        tmp2 = tmp1 * torch.exp(beta*t_i)
+        y_i = (((y0 + tmp2)*t_i)/2 + y0) * torch.exp(-beta*t_i)
         return y_i
 
     def solve_ym(self, fit_t):
@@ -360,6 +361,7 @@ def get_raw_velo(adata, model):
     N_cell = model.N_cell
     regulate = model.regulate
     TGs_expr = model.TGs_expr
+    gamma = model.gamma
     V1 = model.V1.detach()
     K1 = model.K1.detach()
     V2 = model.V2.detach()
@@ -376,7 +378,7 @@ def get_raw_velo(adata, model):
         tmp1 = V2_ * ym_
         tmp2 = (K2_ + ym_) + (1e-12)
         tmp3 = torch.sum(tmp1 / tmp2, dim=1)
-        dz_dt = tmp3 - TGs_expr[i, :]
+        dz_dt = tmp3 - gamma*TGs_expr[i, :]
         velo_raw[i,:] = dz_dt
 
     velo_norm = (velo_raw - velo_raw.min()) / (velo_raw.max() - velo_raw.min() + 1e-6)
