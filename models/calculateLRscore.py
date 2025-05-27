@@ -144,17 +144,18 @@ def calculate_LRTF_allscore(adata, mulNetList, diff_LigRecDB, cont_LigRecDB, Rec
         cellpair = f"{Sender}-{Receiver}"
         if cellpair not in mulNetList:
             return None
-        mlnet = mulNetList[cellpair]
-        TFs = list(set(mlnet['TFTar']['source']))
-        LRpairs = defaultdict(list)
-        for _, row in mlnet['LigRec'].iterrows():
-            for tf in TFs:
-                LRpairs[tf].append(f"{row['source']}_{row['target']}")
-        LRpairs = {k: list(set(v)) for k, v in LRpairs.items()}
-
-        print(f"calculate the regulatory score of diffusion based LR pairs from {Sender} to {Receiver}")
+        mulNet_tab = mulNetList[cellpair]
+        diff_mulNet_tab = mulNet_tab[
+                          mulNet_tab['Ligand'].isin(diff_LigRecDB['source']) & mulNet_tab['Receptor'].isin(diff_LigRecDB['target'])
+                          ].copy()
         diff_LRTF_allscore = calculate_diff_LRTF_score(exprMat, distMat, annoMat, Receiver,Sender=Sender,mulNet_tab=diff_mulNet_tab,
                                              group=group,far_ct=far_ct,close_ct=close_ct, downsample=downsample)
+
+        cont_mulNet_tab = mulNet_tab[
+                          mulNet_tab['Ligand'].isin(cont_LigRecDB['source']) & mulNet_tab['Receptor'].isin(cont_LigRecDB['target'])
+                          ].copy()
+        cont_LRTF_allscore = calculate_cont_LRTF_score(exprMat,DT_neighbor,annoMat,Receiver,mulNet_tab=cont_mulNet_tab,
+                                                       group=group,far_ct=far_ct,close_ct=close_ct, downsample=downsample)
 
     LRs_score_combined = {}
 
