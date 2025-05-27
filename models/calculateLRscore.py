@@ -131,21 +131,14 @@ def calculate_LRTF_allscore(adata, mulNetList, diff_LigRecDB, cont_LigRecDB, Rec
         diff_mulNet_tab = mulNet_tab[
                           mulNet_tab['Ligand'].isin(diff_LigRecDB['source']) & mulNet_tab['Receptor'].isin(diff_LigRecDB['target'])
                           ].copy()
-        num_diffligrec = diff_mulNet_tab[['Ligand', 'Receptor']].drop_duplicates().shape[0]
-        print(f"diffusion Ligand-Receptor 对总数: {num_diffligrec}")
-        print(f"calculate the regulatory score of LR pairs from microenvironment to {Receiver}")
         diff_LRTF_allscore = calculate_diff_LRTF_score(exprMat, distMat, annoMat, Receiver,Sender=Sender,mulNet_tab=diff_mulNet_tab,
                                              group=group,far_ct=far_ct,close_ct=close_ct, downsample=downsample)
-        print('the keys of diff_LRTF_allscore is:', diff_LRTF_allscore.keys())
+
         cont_mulNet_tab = mulNet_tab[
                           mulNet_tab['Ligand'].isin(cont_LigRecDB['source']) & mulNet_tab['Receptor'].isin(cont_LigRecDB['target'])
                           ].copy()
-        num_contligrec = cont_mulNet_tab[['Ligand', 'Receptor']].drop_duplicates().shape[0]
-        print(f"contact Ligand-Receptor 对总数: {num_contligrec}")  
         cont_LRTF_allscore = calculate_cont_LRTF_score(exprMat,DT_neighbor,annoMat,Receiver,mulNet_tab=cont_mulNet_tab,
                                                        group=group,far_ct=far_ct,close_ct=close_ct, downsample=downsample)
-        print('the keys of cont_LRTF_allscore is:', cont_LRTF_allscore.keys())
-        exit()
                 
     else:
         cellpair = f"{Sender}-{Receiver}"
@@ -158,8 +151,7 @@ def calculate_LRTF_allscore(adata, mulNetList, diff_LigRecDB, cont_LigRecDB, Rec
             for tf in TFs:
                 LRpairs[tf].append(f"{row['source']}_{row['target']}")
         LRpairs = {k: list(set(v)) for k, v in LRpairs.items()}
-        print('the LRpairs is:',type(LRpairs))
-        exit()
+
         print(f"calculate the regulatory score of diffusion based LR pairs from {Sender} to {Receiver}")
         diff_LRTF_allscore = calculate_diff_LRTF_score(exprMat, distMat, annoMat, Receiver,Sender=Sender,mulNet_tab=diff_mulNet_tab,
                                              group=group,far_ct=far_ct,close_ct=close_ct, downsample=downsample)
