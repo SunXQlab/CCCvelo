@@ -12,7 +12,6 @@ gc()
 setwd('/home/yll/velocity_methods/01_analysis/apply_in_prostate/area_4000x6000_5000x7000_input/')
 
 source('/home/yll/velocity_methods/01_analysis/apply_in_stereo_cortex/R/preprocess_code.R')
-source('/home/yll/velocity_methods/01_analysis/apply_in_stereo_cortex/R/create_multilayer_network.R')
 
 # load data
 data_path <- '/home/yll/velocity_methods/01_analysis/apply_in_prostate/data/area_4000x6000_5000x7000/'
@@ -64,7 +63,6 @@ df_count = df_count[rownames(exprMat.Impute),]
 df_count = t(df_count)
 exprMat.Impute <- as.matrix(exprMat.Impute)
 exprMat.Impute = t(exprMat.Impute)
-
 
 write.table(df_count,file=paste0(output_fpath, 'raw_expression_mtx.csv'),sep = ",",row.names = TRUE,col.names = TRUE)
 write.table(exprMat.Impute,file=paste0(output_fpath, 'imputation_expression_mtx.csv'),sep = ",",row.names = TRUE,col.names = TRUE)
