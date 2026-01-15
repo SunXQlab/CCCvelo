@@ -61,8 +61,9 @@ write_json(Databases, path=paste0(output_fpath,"Databases.json"), pretty = TRUE,
 df_count <- as.matrix(GetAssayData(ser_obj, "data", "Spatial"))
 rownames(exprMat.Impute) = rownames(df_count)
 df_count = df_count[rownames(exprMat.Impute),]
-df_count = t(df_count)
+
 exprMat.Impute <- as.matrix(exprMat.Impute)
+df_count = t(df_count)
 exprMat.Impute = t(exprMat.Impute)
 
 write.table(df_count,file=paste0(output_fpath, 'raw_expression_mtx.csv'),sep = ",",row.names = TRUE,col.names = TRUE)
