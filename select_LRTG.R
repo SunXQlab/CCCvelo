@@ -5,6 +5,7 @@ library(ggsci)
 library(scales)
 library(ggplot2)
 library(SeuratWrappers)
+library(jsonlite)
 
 rm(list = ls())
 gc()
