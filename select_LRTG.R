@@ -1,72 +1,100 @@
-library(Seurat)
-library(readr)
-library(dplyr)
-library(ggsci)
-library(scales)
-library(ggplot2)
-library(SeuratWrappers)
-library(jsonlite)
+select_LRTG <- function(ser_obj, Databases, log.gc, p_val_adj, pct.ct, expr.ct){
 
-rm(list = ls())
-gc()
+  # select Target gene
+  st_markers <- lapply(unique(ser_obj$Cluster),function(clu){
 
-setwd('/home/yll/velocity_methods/01_analysis/apply_in_prostate/area_4000x6000_5000x7000_input/')
+    markers <- FindMarkers(ser_obj, ident.1 = clu,logfc.threshold = log.gc, min.pct = pct.ct)
+    markers$ident.1 <- clu
+    markers$gene <- rownames(markers)
+    markers
 
-source('/home/yll/velocity_methods/01_analysis/apply_in_stereo_cortex/R/preprocess_code.R')
+  }) %>% do.call('rbind',.) %>% as.data.frame()
+  table(st_markers$p_val_adj <= p_val_adj,st_markers$ident.1)
+  df_markers <- st_markers[st_markers$p_val_adj<=p_val_adj,]
+  ICGs_list <- split(df_markers$gene,df_markers$ident.1)
+  str(ICGs_list)
 
-# load data
-data_path <- '/home/yll/velocity_methods/01_analysis/apply_in_prostate/data/area_4000x6000_5000x7000/'
-ser_obj <- readRDS(paste0(data_path,'sub_ser_obj.rds'))
 
-ser_obj@meta.data$Cluster <- ser_obj@meta.data$new_celltype
-Idents(ser_obj) <- ser_obj@meta.data$Cluster
+  ligs_in_db <- Databases$LigRec.DB$source %>% unique()
+  ligs_in_db <- intersect(ligs_in_db, rownames(ser_obj))
+  recs_in_db <- Databases$LigRec.DB$target %>% unique()
+  recs_in_db <- intersect(recs_in_db, rownames(ser_obj))
 
-## imputation
-seed <- 4321
-norm.matrix <- as.matrix(GetAssayData(ser_obj, "data", "SCT"))
-exprMat.Impute <- run_Imputation(exprMat = norm.matrix,use.seed = T,seed = seed)
+  # clusters <- ser_obj@active.ident %>% as.character() %>% unique()
+  # df_markers_ligs <- lapply(clusters, function(cluster){
+  #
+  #   df <- FindMarkers(ser_obj, ident.1 = cluster, features = ligs_in_db, only.pos = T,
+  #                     logfc.threshold = 0.1,min.pct = min.pct)
+  #   df$gene <- rownames(df)
+  #   df$ident.1 <- cluster
+  #   df
+  #
+  # }) %>% do.call('rbind',.)
+  #
+  # Ligs_up_list <- split(df_markers_ligs$gene,df_markers_ligs$ident.1)
+  # str(Ligs_up_list)
 
-sub_anno <- data.frame(Barcode=colnames(ser_obj),Cluster=ser_obj$Cluster)
-sub_loca <- data.frame(x=ser_obj$center_x,y=ser_obj$center_y)
+  # Check available assays to debug the issue
+  available_assays <- names(ser_obj@assays)
+  print("Available Assays: ")
+  print(available_assays)
+  
+  # Selecting the correct assay
+  if ("SCT" %in% available_assays) {
+    data <- as.matrix(GetAssayData(ser_obj, "data", "SCT"))
+  } else if ('RNA' %in% available_assays) {  
+    data <- as.matrix(GetAssayData(ser_obj, "data", "RNA"))
+  } else {
+    # If neither SCT nor RNA is available, use the "spatial" assay
+    data <- as.matrix(GetAssayData(ser_obj, "data", "Spatial"))
+  }
+  
+  BarCluTable <- data.frame(Barcode = rownames(ser_obj@meta.data),
+                            Cluster = ser_obj@meta.data$Cluster)
 
-# load prior databse
-Databases <- readRDS('/home/yll/velocity_methods/01_analysis/prior_knowledge/Databases.rds')
-quan.cutoff <- 0.98
-Databases <- Databases
-Databases$RecTF.DB <- Databases$RecTF.DB %>%
-  .[.$score > quantile(.$score, quan.cutoff),] %>%
-  dplyr::distinct(source, target)
-Databases$LigRec.DB <- Databases$LigRec.DB %>%
-  dplyr::distinct(source, target) %>%
-  dplyr::filter(target %in% Databases$RecTF.DB$source)
-Databases$TFTG.DB <- Databases$TFTG.DB %>%
-  dplyr::distinct(source, target) %>%
-  dplyr::filter(source %in% Databases$RecTF.DB$target)
+  clusters <- BarCluTable$Cluster %>% as.character() %>% unique()
 
-LRTG_list <- select_LRTG(bin60_seur, Databases, log.gc = 0.25, p_val_adj=0.05,
-                         pct.ct=0.01, expr.ct = 0.1)
-TGs_list <- LRTG_list[["TGs_list"]]
-Ligs_expr_list <- LRTG_list[["Ligs_expr_list"]]
-Recs_expr_list <- LRTG_list[["Recs_expr_list"]]
+  meanExpr_of_LR <- lapply(clusters, function(cluster){
 
-## save results
+    cluster.ids <- BarCluTable$Barcode[BarCluTable$Cluster == cluster]
+    source_mean <- rowMeans(data[,cluster.ids])
+    names(source_mean) <- rownames(data)
+    source_mean
 
-output_fpath <- paste0(getwd(), '/data/processed/')
+  }) %>% do.call('cbind',.) %>% as.data.frame()
+  colnames(meanExpr_of_LR) <- clusters
 
-write_json(TGs_list, path=paste0(output_fpath,"TGs_list.json"), pretty = TRUE, auto_unbox = TRUE)
-write_json(Ligs_expr_list, path=paste0(output_fpath,"Ligs_list.json"), pretty = TRUE, auto_unbox = TRUE)
-write_json(Recs_expr_list, path=paste0(output_fpath,"Recs_list.json"), pretty = TRUE, auto_unbox = TRUE)
-write_json(Databases, path=paste0(output_fpath,"Databases.json"), pretty = TRUE, auto_unbox = TRUE)
+  pct_of_LR <- lapply(clusters, function(cluster){
 
-df_count <- as.matrix(GetAssayData(ser_obj, "data", "Spatial"))
-rownames(exprMat.Impute) = rownames(df_count)
-df_count = df_count[rownames(exprMat.Impute),]
+    cluster.ids <- BarCluTable$Barcode[BarCluTable$Cluster == cluster]
+    dat <- data[,cluster.ids]
+    pct <- rowSums(dat>0)/ncol(dat)
+    names(pct) <- rownames(data)
+    pct
 
-exprMat.Impute <- as.matrix(exprMat.Impute)
-df_count = t(df_count)
-exprMat.Impute = t(exprMat.Impute)
+  }) %>% do.call('cbind',.) %>% as.data.frame()
+  colnames(pct_of_LR) <- clusters
 
-write.table(df_count,file=paste0(output_fpath, 'raw_expression_mtx.csv'),sep = ",",row.names = TRUE,col.names = TRUE)
-write.table(exprMat.Impute,file=paste0(output_fpath, 'imputation_expression_mtx.csv'),sep = ",",row.names = TRUE,col.names = TRUE)
-write.table(sub_anno,file=paste0(output_fpath, 'cell_meta.csv'),sep = ",",row.names = FALSE,col.names = TRUE)
-write.table(sub_loca,file=paste0(output_fpath, 'cell_location.csv'),sep = ",",row.names = TRUE,col.names = TRUE)
+  # calculate receptor list
+  Recs_expr_list <- lapply(clusters, function(cluster){
+
+    recs <- rownames(data)[meanExpr_of_LR[,cluster] >= expr.ct & pct_of_LR[,cluster] >= pct.ct]
+    intersect(recs, recs_in_db)
+
+  })
+  names(Recs_expr_list) <- clusters
+  str(Recs_expr_list)
+
+  # calculate ligand list
+  Ligs_expr_list <- lapply(clusters, function(cluster){
+
+    ligs <- rownames(data)[meanExpr_of_LR[,cluster] >= expr.ct & pct_of_LR[,cluster] >= pct.ct]
+    intersect(ligs, ligs_in_db)
+
+  })
+  names(Ligs_expr_list) <- clusters
+  str(Ligs_expr_list)
+
+  LRTG_list <- list(TGs_list = ICGs_list, Ligs_expr_list = Ligs_expr_list,Recs_expr_list = Recs_expr_list)
+  return(LRTG_list)
+}
