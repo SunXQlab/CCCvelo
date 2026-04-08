@@ -147,8 +147,8 @@ def PrepareData(adata, hidden_dims):
 
     N_TGs = TGs_expr.shape[1]
     layers = hidden_dims
-    layers.insert(0, N_TGs+1)  # 在第一位插入90
-    layers.append(N_TGs)  # 在最后一位追加89
+    layers.insert(0, N_TGs+1)  
+    layers.append(N_TGs)  
     data = [TGs_expr, TFs_expr, TFLR_allscore, TGTF_regulate, iroot, layers]
     return data
 
