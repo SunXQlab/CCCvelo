@@ -88,6 +88,8 @@ class SpatialVelocity():
         self.dnn.register_parameter('K1', self.K1)
         self.dnn.register_parameter('V2', self.V2)
         self.dnn.register_parameter('K2', self.K2)
+        self.dnn.register_parameter('gamma', self.gamma)
+        self.dnn.register_parameter('beta', self.beta)
 
         self.optimizer_Adam = torch.optim.Adam(self.dnn.parameters(), lr=lr)
 
@@ -209,7 +211,7 @@ class SpatialVelocity():
             z_pred_exp[i, :] = z_dnn[fit_t_pos[i]]
             dz_dt_pred[i, :] = dz_dt[fit_t_pos[i]]
 
-        dz_dt_ode = tmp3 - z_pred_exp
+        dz_dt_ode = tmp3 - self.gamma*z_pred_exp
         f = dz_dt_pred - dz_dt_ode
 
         return z_pred_exp, f
