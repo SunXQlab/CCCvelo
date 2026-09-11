@@ -185,6 +185,8 @@ class SpatialVelocity():
         self.dnn.register_parameter('K1', self.K1)
         self.dnn.register_parameter('V2', self.V2)
         self.dnn.register_parameter('K2', self.K2)
+        self.dnn.register_parameter('gamma', self.gamma)
+        self.dnn.register_parameter('beta', self.beta)
 
         self.optimizer_Adam = torch.optim.Adam(self.dnn.parameters(), lr=lr)
         self.iter = 0
