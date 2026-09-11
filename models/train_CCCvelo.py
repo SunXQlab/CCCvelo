@@ -298,7 +298,7 @@ class SpatialVelocity():
             z_pred_exp[i, :] = z_dnn[fit_t_pos[i]]
             dz_dt_pred[i, :] = dz_dt[fit_t_pos[i]]
 
-        dz_dt_ode = tmp3 - z_pred_exp
+        dz_dt_ode = tmp3 - self.gamma * z_pred_exp
         f = dz_dt_pred - dz_dt_ode
 
         return z_pred_exp, f
