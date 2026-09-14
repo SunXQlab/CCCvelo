@@ -147,8 +147,8 @@ def PrepareData(adata, hidden_dims):
 
     N_TGs = TGs_expr.shape[1]
     layers = hidden_dims
-    layers.insert(0, N_TGs+1)  
-    layers.append(N_TGs)  
+    layers.insert(0, N_TGs+1)
+    layers.append(N_TGs)
     data = [TGs_expr, TFs_expr, TFLR_allscore, TGTF_regulate, iroot, layers]
     return data
 
@@ -159,13 +159,15 @@ def root_cell(adata, select_root):
         if adata.shape[0] < max_cell_for_subsampling:
             sub_adata_x = adata.obsm['X_umap']
             sum_dists = distance_matrix(sub_adata_x, sub_adata_x).sum(axis=1)
-            adata.uns['iroot'] = np.argmax(sum_dists)
+            sub_root_idx = np.argmax(sum_dists)
+            adata.uns["iroot"] = sub_root_idx
         else:
             indices = np.arange(adata.shape[0])
             selected_ind = np.random.choice(indices, max_cell_for_subsampling, False)
             sub_adata_x = adata.obsm['X_umap'][selected_ind, :]
             sum_dists = distance_matrix(sub_adata_x, sub_adata_x).sum(axis=1)
-            adata.uns['iroot'] = np.argmax(sum_dists)
+            sub_root_idx = np.argmax(sum_dists)
+            adata.uns["iroot"] = selected_ind[sub_root_idx]
     elif select_root == 'UMAP':
         adata_copy = adata.copy()
 
@@ -189,7 +191,8 @@ def root_cell(adata, select_root):
             selected_ind = np.random.choice(indices, max_cell_for_subsampling, False)
             sub_adata_x = adata_copy.obsm['X_umap'][selected_ind, :]
             sum_dists = distance_matrix(sub_adata_x, sub_adata_x).sum(axis=1)
-            adata.uns['iroot'] = np.argmax(sum_dists)
+            sub_root_idx = np.argmax(sum_dists)
+            adata.uns["iroot"] = selected_ind[sub_root_idx]
     elif select_root == 'CCC_genes':
         lig = adata.var['ligand'].astype(bool)
         rec = adata.var['receptor'].astype(bool)
@@ -203,25 +206,30 @@ def root_cell(adata, select_root):
         if sub_adata.shape[0] < max_cell_for_subsampling:
             sub_adata_x = sub_adata.layers['Imputate']
             sum_dists = distance_matrix(sub_adata_x, sub_adata_x).sum(axis=1)
-            adata.uns['iroot'] = np.argmax(sum_dists)
+            # sub_root_idx = np.argmax(sum_dists)
+            adata.uns["iroot"] = np.argmax(sum_dists)
         else:
             indices = np.arange(sub_adata.shape[0])
             selected_ind = np.random.choice(indices, max_cell_for_subsampling, False)
             sub_adata_x = sub_adata.layers['Imputate'][selected_ind, :]
             sum_dists = distance_matrix(sub_adata_x, sub_adata_x).sum(axis=1)
-            adata.uns['iroot'] = np.argmax(sum_dists)
+            sub_root_idx = np.argmax(sum_dists)
+            adata.uns["iroot"] = selected_ind[sub_root_idx]
     elif select_root == "spatial":
         max_cell_for_subsampling = 50000
         if adata.shape[0] < max_cell_for_subsampling:
             sub_adata_x = adata.obsm['spatial']
             sum_dists = distance_matrix(sub_adata_x, sub_adata_x).sum(axis=1)
-            adata.uns['iroot'] = np.argmax(sum_dists)
+            # sub_root_idx = np.argmax(sum_dists)
+            adata.uns["iroot"] = np.argmax(sum_dists)
         else:
             indices = np.arange(adata.shape[0])
             selected_ind = np.random.choice(indices, max_cell_for_subsampling, False)
             sub_adata_x = adata.obsm['spatial'][selected_ind, :]
             sum_dists = distance_matrix(sub_adata_x, sub_adata_x).sum(axis=1)
-            adata.uns['iroot'] = np.argmax(sum_dists)
+            sub_root_idx = np.argmax(sum_dists)
+            adata.uns["iroot"] = selected_ind[sub_root_idx]
+            # adata.uns['iroot'] = np.argmax(sum_dists)
     elif type(select_root) == int:
         adata.uns['iroot'] = select_root
 
@@ -299,7 +307,7 @@ def PrerocessRealData(count_file,imput_file,meta_file,loca_file,LR_link_file,TFT
             continue
 
         file_name = file_names[index[0]]
-        data_tmp = pd.read_csv(folder_path + file_name)
+        data_tmp = pd.read_csv(os.path.join(folder_path, file_name))
         LR_pair = data_tmp.columns.tolist()
         # print('the LR_pair is:\n', LR_pair)
         data = data_tmp.values
@@ -324,16 +332,10 @@ def PrerocessRealData(count_file,imput_file,meta_file,loca_file,LR_link_file,TFT
                     adata.var['highly_variable'][factor] = True
 
     if using_low_emdding:
-        # Constructing the spatial network
-        # STAGATE.Cal_Spatial_Net(adata, rad_cutoff=150)
-        # STAGATE.Stats_Spatial_Net(adata)
-        # adata = STAGATE.train_STAGATE(adata, alpha=0)
-
         sc.pp.neighbors(adata, use_rep='STAGATE')
         sc.tl.umap(adata)
     else:
         sc.tl.pca(adata, svd_solver="arpack")
-        # sc.pp.neighbors(adata, n_pcs=50)
         scv.pp.neighbors(adata)
         sc.tl.umap(adata)
 
@@ -440,11 +442,6 @@ def PrerocessData(count_file, meta_file, loca_file, LR_link_file, TFTG_link_file
                 adata.var['highly_variable'][factor] = True
 
     if using_low_emdding:
-        # Constructing the spatial network
-        # STAGATE.Cal_Spatial_Net(adata, rad_cutoff=150)
-        # STAGATE.Stats_Spatial_Net(adata)
-        # adata = STAGATE.train_STAGATE(adata, alpha=0)
-
         sc.pp.neighbors(adata, use_rep='STAGATE')
         sc.tl.umap(adata)
     else:
@@ -465,7 +462,7 @@ def save_model_and_data(model, data, path):
     torch.save(data, os.path.join(path, "CCCvelo.pt"))
     # print(f"Model and data saved at: {path}")
 
-def calculate_groundTruth_velo(adata,GWnosie):  
+def calculate_groundTruth_velo(adata,GWnosie):  # 给定模型中的参数和TF活性，根据模型的公式计算的velocity
     adata = adata[:, adata.var['TGs'].astype(bool)]
     regulate = adata.varm['TGTF_regulate']
     y_ode = adata.obsm['groundTruth_TF_activity']
@@ -490,6 +487,22 @@ def calculate_groundTruth_velo(adata,GWnosie):
     adata.layers['groundTruth_velo'] = gd_velo
     return adata
 
+def calculate_groundTruth_velo_v2(adata):  # gene表达量关于时间的导数，中心差分法
+
+    adata = adata[:, adata.var['TGs'].astype(bool)]
+    TGs_expr = adata.layers['Imputate']
+    gdt_psd = adata.obs['groundTruth_psd']
+    dTG_dt = []
+    for i in range(TGs_expr.shape[1]):
+        TG_expr_i = np.array(TGs_expr[:, i])
+        dTG_dt_i = np.gradient(TG_expr_i, gdt_psd)
+        # print('the shape of dTG_dt_i is:', dTG_dt_i.shape)
+        dTG_dt.append(dTG_dt_i)
+    dTG_dt = np.array(dTG_dt).T
+    adata.layers['groundTruth_velo_with_dG_dt'] = dTG_dt
+
+    return adata
+
 def calclulate_TFactivity(model,batch):
     TGs_expr, TFs_expr, TFLR_allscore = batch
     N_TGs = TGs_expr.size(1)
@@ -501,8 +514,9 @@ def calclulate_TFactivity(model,batch):
     V2 = model.V2.detach()
     K2 = model.K2.detach()
     regulate = model.regulate
-    print('the shape of regulate is:', regulate.size())
-    zero_z = torch.zeros(N_TGs, N_TFs)
+    # print('the shape of regulate is:', regulate.size())
+    # zero_z = torch.zeros(N_TGs, N_TFs)
+    zero_z = torch.zeros_like(V2)
     V2_ = torch.where(regulate == 1, V2, zero_z)
     K2_ = torch.where(regulate == 1, K2, zero_z)
     tmp1 = V2_.unsqueeze(0) * y_ode.unsqueeze(1)
@@ -527,8 +541,9 @@ def calclulate_TFactivity_v0(model,isbatch):
     V2 = model.V2.detach()
     K2 = model.K2.detach()
     regulate = model.regulate
-    print('the shape of regulate is:', regulate.size())
-    zero_z = torch.zeros(N_TGs, N_TFs)
+    # print('the shape of regulate is:', regulate.size())
+    # zero_z = torch.zeros(N_TGs, N_TFs)
+    zero_z = torch.zeros_like(V2)
     V2_ = torch.where(regulate == 1, V2, zero_z)
     K2_ = torch.where(regulate == 1, K2, zero_z)
     tmp1 = V2_.unsqueeze(0) * y_ode.unsqueeze(1)
@@ -536,6 +551,7 @@ def calclulate_TFactivity_v0(model,isbatch):
     tmp3 = torch.sum(tmp1 / tmp2, dim=2)
 
     return y_ode,tmp3
+
 
 def get_raw_velo(adata, model):
 
@@ -569,16 +585,17 @@ def get_raw_velo(adata, model):
 
     adata_copy = adata.copy()
     adata_copy.uns["velo_para"] = {}
-    adata_copy.uns["velo_para"]['fit_V1'] = V1.detach().numpy()
-    adata_copy.uns["velo_para"]['fit_K1'] = K1.detach().numpy()
-    adata_copy.uns["velo_para"]['fit_V2'] = V2.detach().numpy()
-    adata_copy.uns["velo_para"]['fit_K2'] = K2.detach().numpy()
-    adata_copy.obs['fit_t'] = fit_t.detach()
-    adata_copy.layers['velo_raw'] = velo_raw.detach().numpy()
-    adata_copy.layers['velo_norm'] = velo_norm.detach().numpy()
+    adata_copy.uns["velo_para"]['fit_V1'] = V1.detach().cpu().numpy()
+    adata_copy.uns["velo_para"]['fit_K1'] = K1.detach().cpu().numpy()
+    adata_copy.uns["velo_para"]['fit_V2'] = V2.detach().cpu().numpy()
+    adata_copy.uns["velo_para"]['fit_K2'] = K2.detach().cpu().numpy()
+    adata_copy.obs['fit_t'] = fit_t.detach().cpu()
+    adata_copy.layers['velo_raw'] = velo_raw.detach().cpu().numpy()
+    adata_copy.layers['velo_norm'] = velo_norm.detach().cpu().numpy()
     adata_copy.layers['velocity'] = adata_copy.layers['velo_raw']
 
     return adata_copy
+
 
 def get_raw_velo_v2(adata, model):
 
@@ -592,9 +609,10 @@ def get_raw_velo_v2(adata, model):
     K1 = model.K1.detach()
     V2 = model.V2.detach()
     K2 = model.K2.detach()
+    gamma = model.gamma.detach()
     fit_t = model.assign_latenttime()[1]
     y_ode = model.solve_ym(fit_t)
-    print('the shape of y_ode is:', y_ode.shape)
+    # print('the shape of y_ode is:', y_ode.shape)
     velo_raw = torch.zeros((N_cell, N_TGs)).to(device)
     for i in range(N_cell):
         y_i = y_ode[i,:]
@@ -602,7 +620,7 @@ def get_raw_velo_v2(adata, model):
         tmp1 = V2 * ym_
         tmp2 = (K2 + ym_) + (1e-6)
         tmp3 = torch.sum(tmp1 / tmp2, dim=1)
-        dz_dt = tmp3 - TGs_expr[i, :]
+        dz_dt = tmp3 - gamma *TGs_expr[i, :]
         velo_raw[i,:] = dz_dt
 
     loss = torch.mean((TGs_expr - TGs_pred) ** 2,dim=0)
@@ -652,4 +670,3 @@ def get_raw_velo_v2(adata, model):
     adata_copy.layers['velocity'] = adata_copy.layers['velo_raw']
 
     return adata_copy
-
