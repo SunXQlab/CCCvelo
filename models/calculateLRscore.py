@@ -5,23 +5,13 @@ import pandas as pd
 import pickle
 from collections import defaultdict
 from scipy.spatial.distance import pdist, squareform
-from models.utils import create_directory 
+from models2.utils import create_directory 
 import scipy.sparse as sp
 from scipy.spatial import Delaunay
 from anndata import AnnData
 
-def build_DT_neighbors(adata, r_eps_real = 200, scale_factor = 0.73):
-    """
-    Construct an adjacency graph based on Delaunay Triangulation and store it in adata.obsp["dt_connectivities"]
-
-    Parameters:
-    - adata (AnnData): AnnData object, 
-    - r_eps_real：the radius of the epsilon ball in tech resolution in um, default 200 um
-    - scale_factor: 1 spatial coord unit equals to how many µm
-
-    Input:
-       AnnData: adata
-    """
+def build_DT_neighbors(adata, r_eps_real = 200, scale_factor = 0.73, mode = "weight_sum_2"):
+    
     assert "spatial" in adata.obsm, "adata.obsm['spatial'] is required."
 
     coords = adata.obsm["spatial"]
@@ -38,12 +28,12 @@ def build_DT_neighbors(adata, r_eps_real = 200, scale_factor = 0.73):
     node1 = coords[edge_array[:, 0]]
     node2 = coords[edge_array[:, 1]]
     dist = np.linalg.norm(node1 - node2, axis=1)
-    print('the max dist is:', max(dist))
+    # print('the max dist is:', max(dist))
 
     max_r = r_eps_real / scale_factor
     valid = dist <= max_r
     valid_edges = edge_array[valid]
-    
+
     sorted_edges = np.sort(valid_edges, axis=1)
     unique_edges = np.unique(sorted_edges, axis=0)
 
@@ -131,20 +121,28 @@ def calculate_LRTF_allscore(adata, mulNetList, diff_LigRecDB, cont_LigRecDB, Rec
         diff_mulNet_tab = mulNet_tab[
                           mulNet_tab['Ligand'].isin(diff_LigRecDB['source']) & mulNet_tab['Receptor'].isin(diff_LigRecDB['target'])
                           ].copy()
+        # num_diffligrec = diff_mulNet_tab[['Ligand', 'Receptor']].drop_duplicates().shape[0]
+        # print(f"diffusion Ligand-Receptor 对总数: {num_diffligrec}")
+        print(f"calculate the regulatory score of LR pairs from microenvironment to {Receiver}")
         diff_LRTF_allscore = calculate_diff_LRTF_score(exprMat, distMat, annoMat, Receiver,Sender=Sender,mulNet_tab=diff_mulNet_tab,
                                              group=group,far_ct=far_ct,close_ct=close_ct, downsample=downsample)
-
+        # print('the keys of diff_LRTF_allscore is:', diff_LRTF_allscore.keys())
+  
         cont_mulNet_tab = mulNet_tab[
                           mulNet_tab['Ligand'].isin(cont_LigRecDB['source']) & mulNet_tab['Receptor'].isin(cont_LigRecDB['target'])
                           ].copy()
+        # num_contligrec = cont_mulNet_tab[['Ligand', 'Receptor']].drop_duplicates().shape[0]
+        # print(f"contact Ligand-Receptor 对总数: {num_contligrec}")  
         cont_LRTF_allscore = calculate_cont_LRTF_score(exprMat,DT_neighbor,annoMat,Receiver,mulNet_tab=cont_mulNet_tab,
                                                        group=group,far_ct=far_ct,close_ct=close_ct, downsample=downsample)
+
                 
     else:
         cellpair = f"{Sender}-{Receiver}"
         if cellpair not in mulNetList:
             return None
         mulNet_tab = mulNetList[cellpair]
+    
         diff_mulNet_tab = mulNet_tab[
                           mulNet_tab['Ligand'].isin(diff_LigRecDB['source']) & mulNet_tab['Receptor'].isin(diff_LigRecDB['target'])
                           ].copy()
@@ -158,17 +156,19 @@ def calculate_LRTF_allscore(adata, mulNetList, diff_LigRecDB, cont_LigRecDB, Rec
                                                        group=group,far_ct=far_ct,close_ct=close_ct, downsample=downsample)
 
     LRs_score_combined = {}
-
+    
     for tf, df in diff_LRTF_allscore['LRs_score'].items():
-        LRs_score_combined[f'diff_{tf}'] = df
+        LRs_score_combined[tf] = df
 
     for tf, df in cont_LRTF_allscore['LRs_score'].items():
-        LRs_score_combined[f'cont_{tf}'] = df
+        LRs_score_combined[tf] = df
 
-    TFs_expr_diff = diff_LRTF_allscore['TFs_expr'].add_prefix('diff_')
-    TFs_expr_cont = cont_LRTF_allscore['TFs_expr'].add_prefix('cont_')
+    TFs_expr_combined = {}
+    for tf, df in diff_LRTF_allscore['TFs_expr'].items():
+        TFs_expr_combined[tf] = df
 
-    TFs_expr_combined = pd.concat([TFs_expr_diff, TFs_expr_cont], axis=1)
+    for tf, df in cont_LRTF_allscore['TFs_expr'].items():
+        TFs_expr_combined[tf] = df
 
     combined_allscore = {
     'LRs_score': LRs_score_combined,
@@ -210,7 +210,7 @@ def calculate_diff_LRTF_score(exprMat, distMat, annoMat, Receiver,mulNet_tab,Sen
 
     cpMat = None
     if group is not None:
-        cpMat = get_cell_pairs(group, distMat, far_ct, close_ct)
+        cpMat = get_cell_pairs(distMat, group=group, far_ct=far_ct, close_ct=close_ct)
     
     LRs_score = {}
     for tf in TFs:
@@ -232,7 +232,7 @@ def calculate_diff_LRTF_score(exprMat, distMat, annoMat, Receiver,mulNet_tab,Sen
                     val = RecMat.loc[:, j].values * (LigMat.loc[:, senders].values @ distMat.loc[senders, j].values)
                 rows.append(val)
             LR_score_df = pd.DataFrame(rows, index=rec_cells, columns=lr)
-        LRs_score[tf] = LR_score_df
+            LRs_score[tf] = LR_score_df
 
     if cpMat is None:
         TFs_expr = {tf: exprMat.loc[tf, receBars].values for tf in TFs}
@@ -408,6 +408,7 @@ def get_TFLR_allactivity(mulNetList, OutputDir):
 def save_LRscore_and_MLnet(adata, mulNetList, TFLR_all_score, save_path):
 
     adata.write_h5ad(save_path+'adata_raw.h5ad')
+
     mulNet_tab = []
     for mlnet in mulNetList.values():
         ligrec = pd.DataFrame({'Ligand': mlnet['LigRec']['source'], 'Receptor': mlnet['LigRec']['target']})
@@ -435,4 +436,9 @@ def save_LRscore_and_MLnet(adata, mulNetList, TFLR_all_score, save_path):
 
     LR_link.to_csv(os.path.join(save_path, 'LR_links.csv'), index=False)
     TFTG_link.to_csv(os.path.join(save_path, 'TFTG_links.csv'), index=False)
+
+
+
+
+
 
