@@ -3,17 +3,17 @@ torch.cuda.empty_cache()
 from collections import OrderedDict
 import scanpy as sc
 import pandas as pd
-import TFvelo as TFv
+# import TFvelo as TFv
 import os
 import numpy as np
-import random
+
 import matplotlib.pyplot as plt
 from scipy.spatial import distance_matrix
 import warnings
 import time
 from tqdm import tqdm
 from collections import Counter
-import scvelo as scv
+# import scvelo as scv
 
 # CUDA support
 if torch.cuda.is_available():
@@ -34,12 +34,12 @@ def PrepareData(adata, hidden_dims):
 
     # adata = root_cell(adata, select_root)
     iroot = torch.tensor(adata.uns['iroot'])
-    print('the root cell is:', adata.uns['iroot'])
+    # print('the root cell is:', adata.uns['iroot'])
 
     N_TGs = TGs_expr.shape[1]
     layers = hidden_dims
-    layers.insert(0, N_TGs+1)  
-    layers.append(N_TGs)  
+    layers.insert(0, N_TGs+1)  # 在第一位插入90
+    layers.append(N_TGs)  # 在最后一位追加89
     data = [TGs_expr, TFs_expr, TFLR_allscore, TGTF_regulate, iroot, layers]
     return data
 
@@ -119,6 +119,7 @@ def root_cell(adata, select_root):
 
     return adata
 
+# +++++++++++++++++++++++++++++++++++++ the deep neural network ++++++++++++++++++++++++++++++++++++++++
 class DNN(torch.nn.Module):
     def __init__(self, layers):
         super(DNN, self).__init__()
@@ -165,19 +166,21 @@ class SpatialVelocity():
 
         self.rootcell_exp = self.TGs_expr[self.iroot, :]
 
+        # setting parameters
+
         self.V1 = torch.empty((self.N_TFs, self.N_LRs), dtype=torch.float32).uniform_(0, 1).float().requires_grad_(True).to(device)
         self.K1 = torch.empty((self.N_TFs, self.N_LRs), dtype=torch.float32).uniform_(0, 1).float().requires_grad_(True).to(device)
         self.V2 = torch.empty((self.N_TGs, self.N_TFs), dtype=torch.float32).uniform_(0, 1).float().requires_grad_(True).to(device)
         self.K2 = torch.empty((self.N_TGs, self.N_TFs), dtype=torch.float32).uniform_(0, 1).float().requires_grad_(True).to(device)
-        self.gamma = torch.empty((self.N_TGs), dtype=torch.float32).uniform_(0, 2).float().requires_grad_(True).to(device)
-        self.beta = torch.empty((self.N_TFs), dtype=torch.float32).uniform_(0, 2).float().requires_grad_(True).to(device)
+        self.beta = torch.empty((self.N_TFs),dtype=torch.float32).uniform_(0, 1).float().requires_grad_(True).to(device)
+        self.gamma = torch.empty((self.N_TGs),dtype=torch.float32).uniform_(0, 1).float().requires_grad_(True).to(device)
 
-        self.V1 = torch.nn.Parameter(self.V1)
-        self.K1 = torch.nn.Parameter(self.K1)
-        self.V2 = torch.nn.Parameter(self.V2) 
-        self.K2 = torch.nn.Parameter(self.K2) 
-        self.gamma = torch.nn.Parameter(self.gamma)
+        self.V1 = torch.nn.Parameter(self.V1)  # 反向传播需要更新的参数
+        self.K1 = torch.nn.Parameter(self.K1)  # 反向传播需要更新的参数
+        self.V2 = torch.nn.Parameter(self.V2)  # 反向传播需要更新的参数
+        self.K2 = torch.nn.Parameter(self.K2)  # 反向传播需要更新的参数
         self.beta = torch.nn.Parameter(self.beta)
+        self.gamma = torch.nn.Parameter(self.gamma)
 
         # deep neural networks
         self.dnn = DNN(layers).to(device)
@@ -185,8 +188,8 @@ class SpatialVelocity():
         self.dnn.register_parameter('K1', self.K1)
         self.dnn.register_parameter('V2', self.V2)
         self.dnn.register_parameter('K2', self.K2)
-        self.dnn.register_parameter('gamma', self.gamma)
         self.dnn.register_parameter('beta', self.beta)
+        self.dnn.register_parameter('gamma', self.gamma)
 
         self.optimizer_Adam = torch.optim.Adam(self.dnn.parameters(), lr=lr)
         self.iter = 0
@@ -196,7 +199,7 @@ class SpatialVelocity():
         N_TGs = self.N_TGs
         z0 = self.rootcell_exp.repeat(t.size(0), 1)
         z_and_t = torch.cat([z0, t], dim=1)
-        z_dnn = self.dnn(z_and_t)  
+        z_dnn = self.dnn(z_and_t)  # dim = 1 :按行并排
 
         for i in range(N_TGs):
             z_t_pre = torch.autograd.grad(
@@ -213,10 +216,10 @@ class SpatialVelocity():
 
         return z_dnn, dz_dt
 
-    def assign_latenttime(self):
+    def assign_latenttime(self,TGs_expr):
         tpoints = self.t
         z_dnn = self.net_z()[0]
-        z_obs = self.TGs_expr
+        z_obs = TGs_expr
         loss_cell_to_t = torch.sum((z_dnn.unsqueeze(1) - z_obs.unsqueeze(0)) ** 2, dim=2)  # torch.Size([2000, 2515])
         pos = torch.argmin(loss_cell_to_t, dim=0)
         fit_t = tpoints[pos]
@@ -250,7 +253,8 @@ class SpatialVelocity():
         TFs_expr = self.TFs_expr
         x_i = TFLR_allscore[int(cell_i), :, :]
         Y_i = TFs_expr[int(cell_i), :]
-        zero_y = torch.zeros(self.N_TFs, self.N_LRs)
+        # zero_y = torch.zeros(self.N_TFs, self.N_LRs)
+        zero_y = torch.zeros_like(self.V1)
         V1_ = torch.where(x_i > 0, V1, zero_y)  # torch.Size([88, 63])
         K1_ = torch.where(x_i > 0, K1, zero_y)  # torch.Size([88, 63])
         tmp1 = torch.sum((V1_ * x_i) / ((K1_ + x_i) + (1e-12)), dim=1) * Y_i
@@ -278,14 +282,16 @@ class SpatialVelocity():
         regulate = self.regulate
         N_TGs = self.N_TGs
         N_TFs = self.N_TFs
+        TGs_expr = self.TGs_expr
         z_dnn, dz_dt = self.net_z()
-        fit_t_pos, fit_t = self.assign_latenttime()
+        fit_t_pos, fit_t = self.assign_latenttime(TGs_expr)
         # print('the fit latent time is:\n', fit_t)
 
         # calculate ym
         y_ode = self.solve_ym(fit_t)
 
-        zero_z = torch.zeros(N_TGs, N_TFs)
+        # zero_z = torch.zeros(N_TGs, N_TFs)
+        zero_z = torch.zeros_like(self.V2)
         V2_ = torch.where(regulate == 1, V2, zero_z)
         K2_ = torch.where(regulate == 1, K2, zero_z)
         tmp1 = V2_.unsqueeze(0) * y_ode.unsqueeze(1)
@@ -298,7 +304,10 @@ class SpatialVelocity():
             z_pred_exp[i, :] = z_dnn[fit_t_pos[i]]
             dz_dt_pred[i, :] = dz_dt[fit_t_pos[i]]
 
-        dz_dt_ode = tmp3 - self.gamma * z_pred_exp
+        # print('[gamma] value is:', self.gamma[0:5])
+        # print('[beta] value is:', self.beta[0:5])
+
+        dz_dt_ode = tmp3 - self.gamma*z_pred_exp
         f = dz_dt_pred - dz_dt_ode
 
         return z_pred_exp, f
@@ -314,7 +323,7 @@ class SpatialVelocity():
             tmp1 = self.V2 * ym_
             tmp2 = (self.K2 + ym_) + (1e-12)
             tmp3 = torch.sum(tmp1 / tmp2, dim=1)
-            dz_dt = tmp3 - self.TGs_expr[i, :]
+            dz_dt = tmp3 - self.gamma * self.TGs_expr[i, :]
             pre_velo[i, :] = dz_dt
         return pre_velo
 
@@ -343,116 +352,4 @@ class SpatialVelocity():
                 print('It: %d, Loss: %.3e' %(epoch, loss.item()))
 
         return iteration_adam, loss_adam
-
-def get_raw_velo(adata, model):
-
-    N_TGs = model.N_TGs
-    N_TFs = model.N_TFs
-    N_cell = model.N_cell
-    regulate = model.regulate
-    TGs_expr = model.TGs_expr
-    gamma = model.gamma
-    V1 = model.V1.detach()
-    K1 = model.K1.detach()
-    V2 = model.V2.detach()
-    K2 = model.K2.detach()
-    fit_t = model.assign_latenttime()[1]
-    y_ode = model.solve_ym(fit_t)
-    zero_z = torch.zeros(N_TGs, N_TFs)
-    V2_ = torch.where(regulate == 1, V2, zero_z)
-    K2_ = torch.where(regulate == 1, K2, zero_z)
-    velo_raw = torch.zeros((N_cell, N_TGs)).to(device)
-    for i in range(N_cell):
-        y_i = y_ode[i,:]
-        ym_ = regulate * y_i
-        tmp1 = V2_ * ym_
-        tmp2 = (K2_ + ym_) + (1e-12)
-        tmp3 = torch.sum(tmp1 / tmp2, dim=1)
-        dz_dt = tmp3 - gamma*TGs_expr[i, :]
-        velo_raw[i,:] = dz_dt
-
-    velo_norm = (velo_raw - velo_raw.min()) / (velo_raw.max() - velo_raw.min() + 1e-6)
-
-    adata_copy = adata.copy()
-    adata_copy.uns["velo_para"] = {}
-    adata_copy.uns["velo_para"]['fit_V1'] = V1.detach().numpy()
-    adata_copy.uns["velo_para"]['fit_K1'] = K1.detach().numpy()
-    adata_copy.uns["velo_para"]['fit_V2'] = V2.detach().numpy()
-    adata_copy.uns["velo_para"]['fit_K2'] = K2.detach().numpy()
-    adata_copy.obs['fit_t'] = fit_t.detach()
-    adata_copy.layers['velo_raw'] = velo_raw.detach().numpy()
-    adata_copy.layers['velo_norm'] = velo_norm.detach().numpy()
-    adata_copy.layers['velocity'] = adata_copy.layers['velo_raw']
-
-    return adata_copy
-
-def get_raw_velo_v2(adata, model):
-
-    N_TGs = model.N_TGs
-    N_TFs = model.N_TFs
-    N_cell = model.N_cell
-    regulate = model.regulate
-    TGs_expr = model.TGs_expr
-    TGs_pred = model.net_f2()[0]
-    V1 = model.V1.detach()
-    K1 = model.K1.detach()
-    V2 = model.V2.detach()
-    K2 = model.K2.detach()
-    fit_t = model.assign_latenttime()[1]
-    y_ode = model.solve_ym(fit_t)
-    print('the shape of y_ode is:', y_ode.shape)
-    velo_raw = torch.zeros((N_cell, N_TGs)).to(device)
-    for i in range(N_cell):
-        y_i = y_ode[i,:]
-        ym_ = regulate * y_i
-        tmp1 = V2 * ym_
-        tmp2 = (K2 + ym_) + (1e-6)
-        tmp3 = torch.sum(tmp1 / tmp2, dim=1)
-        dz_dt = tmp3 - TGs_expr[i, :]
-        velo_raw[i,:] = dz_dt
-
-    loss = torch.mean((TGs_expr - TGs_pred) ** 2,dim=0)
-    velo_norm = (velo_raw - velo_raw.min()) / (velo_raw.max() - velo_raw.min() + 1e-6)
-
-    adata_copy = adata.copy()
-    lig = adata.var['ligand'].astype(bool)
-    rec = adata.var['receptor'].astype(bool)
-    tf = adata.var['TFs'].astype(bool)
-    tg = adata.var['TGs'].astype(bool)
-    combined_bool = lig | rec | tf | tg
-    adata_copy = adata_copy[:, combined_bool]  # genes consist with ligand, receptor, TF, TG
-
-    y_ode_ = torch.zeros((adata_copy.shape))
-    tfs_mask = adata_copy.var['TFs'].astype(bool)
-    tfs_index = tfs_mask[tfs_mask].index
-    tfs_index = [adata_copy.var_names.get_loc(ind) for ind in tfs_index]  # Convert to integer indices
-
-    for i, ind in enumerate(tfs_index):
-        y_ode_[:, ind] = y_ode[:, i]
-
-    velo_raw_ = torch.zeros((adata_copy.shape))
-    velo_norm_ = torch.zeros((adata_copy.shape))
-    loss_ = torch.zeros((adata_copy.shape[1],))
-    tgs_mask = adata_copy.var['TGs'].astype(bool)
-    tgs_index = tgs_mask[tgs_mask].index
-    tgs_index = [adata_copy.var_names.get_loc(ind) for ind in tgs_index]  # Convert to integer indices
-
-    for i, ind in enumerate(tgs_index):
-        velo_raw_[:, ind] = velo_raw[:, i]
-        velo_norm_[:, ind] = velo_norm[:, i]
-        loss_[ind] = loss[i]
-
-    adata_copy.uns["velo_para"] = {}
-    adata_copy.uns["velo_para"]['fit_V1'] = V1
-    adata_copy.uns["velo_para"]['fit_K1'] = K1
-    adata_copy.uns["velo_para"]['fit_V2'] = V2
-    adata_copy.uns["velo_para"]['fit_K2'] = K2
-    adata_copy.obs['fit_t'] = fit_t.detach()
-    adata_copy.varm['loss'] = loss_.detach().numpy()
-    adata_copy.layers['TFs_activity'] = y_ode_.detach().numpy()
-    adata_copy.layers['velo_raw'] = velo_raw_.detach().numpy()
-    adata_copy.layers['velo_norm'] = velo_norm_.detach().numpy()
-    adata_copy.layers['velocity'] = adata_copy.layers['velo_raw']
-
-    return adata_copy
 
