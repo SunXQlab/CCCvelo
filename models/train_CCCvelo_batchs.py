@@ -88,8 +88,8 @@ class SpatialVelocity():
         self.dnn.register_parameter('K1', self.K1)
         self.dnn.register_parameter('V2', self.V2)
         self.dnn.register_parameter('K2', self.K2)
-        self.dnn.register_parameter('gamma', self.gamma)
         self.dnn.register_parameter('beta', self.beta)
+        self.dnn.register_parameter('gamma', self.gamma)
 
         self.optimizer_Adam = torch.optim.Adam(self.dnn.parameters(), lr=lr)
 
@@ -102,7 +102,7 @@ class SpatialVelocity():
         N_TGs = self.N_TGs
         z0 = self.rootcell_exp.repeat(t.size(0), 1)
         z_and_t = torch.cat([z0, t], dim=1)
-        z_dnn = self.dnn(z_and_t)  
+        z_dnn = self.dnn(z_and_t)  # dim = 1 :按行并排
 
         for i in range(N_TGs):
             z_t_pre = torch.autograd.grad(
@@ -125,7 +125,7 @@ class SpatialVelocity():
         z_obs = TGs_expr
         # loss_cell_to_t0 = torch.sum((z_dnn.unsqueeze(1) - z_obs.unsqueeze(0)) ** 2, dim=2)  # torch.Size([2000, 2515])
 
-        chunk_size = 500  
+        chunk_size = 500  # 根据内存大小调整这个值
         loss_cell_to_t = []
 
         for i in range(0, z_dnn.size(0), chunk_size):
@@ -168,7 +168,8 @@ class SpatialVelocity():
         TFs_expr = self.TFs_expr
         x_i = TFLR_allscore[int(cell_i), :, :]
         Y_i = TFs_expr[int(cell_i), :]
-        zero_y = torch.zeros(self.N_TFs, self.N_LRs)
+        # zero_y = torch.zeros(self.N_TFs, self.N_LRs)
+        zero_y = torch.zeros_like(self.V1)
         V1_ = torch.where(x_i > 0, V1, zero_y)  # torch.Size([88, 63])
         K1_ = torch.where(x_i > 0, K1, zero_y)  # torch.Size([88, 63])
         tmp1 = torch.sum((V1_ * x_i) / ((K1_ + x_i) + (1e-12)), dim=1) * Y_i
@@ -197,7 +198,8 @@ class SpatialVelocity():
 
         # Calculate ym
         y_ode = self.solve_ym(fit_t)
-        zero_z = torch.zeros(self.N_TGs, self.N_TFs)
+        # zero_z = torch.zeros(self.N_TGs, self.N_TFs)
+        zero_z = torch.zeros_like(self.V2)
         V2_ = torch.where(TGTF_regulate == 1, self.V2, zero_z)
         K2_ = torch.where(TGTF_regulate == 1, self.K2, zero_z)
         tmp1 = V2_.unsqueeze(0) * y_ode.unsqueeze(1)
